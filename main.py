@@ -18,6 +18,7 @@ class App():
 
         self.weight_angle= [1]*12
         self.weight_cosine = [1]*16
+        self.window = 0
 
         self.layout()
         self.widget()
@@ -86,13 +87,13 @@ class App():
         method_dropdown.grid(row=0,column=0, columnspan=2, padx=5, pady=5)
 
         # norm value dropdown
-        text_norm = ttk.Label(self.option_area, text='Norm') # put text on mainframe
-        text_norm.grid(row = 1, column = 0, padx=5, pady=5) # specify where text is in mainframe
+        text_norm = ttk.Label(self.option_area, text='Highest Difference') # put text on mainframe
+        text_norm.grid(row = 1, column = 0, sticky='W', padx=5, pady=5) # specify where text is in mainframe
 
         norm_list = ["45", "90", "180"]
         self.norm = tk.StringVar()
 
-        norm_value =  ttk.OptionMenu(self.option_area, self.norm, norm_list[0], *norm_list)
+        norm_value =  ttk.OptionMenu(self.option_area, self.norm, norm_list[2], *norm_list)
         norm_value.grid(row=1, column=1, padx=5, pady=5)
 
         # option checkbox
@@ -100,27 +101,31 @@ class App():
         self.weight_var.set(0)
 
         weight_check = ttk.Checkbutton(self.option_area, text='Weight', variable=self.weight_var, command=self.input_weight)
-        weight_check.grid(row=2, sticky='W', padx=5)
+        weight_check.grid(row=2, sticky='W', padx=5)        
+
+        self.MAW_var = tk.IntVar()
+        self.MAW_var.set(0)
+
+        MAW_check = ttk.Checkbutton(self.option_area, text='Moving Weight', variable=self.MAW_var, command=self.MAW_window)
+        MAW_check.grid(row=3, sticky='W', padx=5)
 
         self.thresh_var = tk.IntVar()
         self.thresh_var.set(0)
 
         thresh_check = ttk.Checkbutton(self.option_area, text='Threshold', variable=self.thresh_var)
-        thresh_check.grid(row=3, sticky='W', padx=5)
+        thresh_check.grid(row=4, sticky='W', padx=5)
 
         self.expo_var = tk.IntVar()
         self.expo_var.set(0)
 
         expo_check = ttk.Checkbutton(self.option_area, text='Exponential', variable=self.expo_var)
-        expo_check.grid(row=4, sticky='W', padx=5)
+        expo_check.grid(row=5, sticky='W', padx=5)
 
         self.kf_var = tk.IntVar()
         self.kf_var.set(0)
 
         kf_check = ttk.Checkbutton(self.option_area, text='Keyframes', variable=self.kf_var)
-        kf_check.grid(row=5, sticky='W', padx=5)
-
-        
+        kf_check.grid(row=6, sticky='W', padx=5)
 
     def input_weight(self):
         
@@ -203,6 +208,35 @@ class App():
             submit_button.grid(row=3,pady=10, columnspan=3)
 
 
+
+    def MAW_window(self):
+
+        MAW_window = ttk.Toplevel()
+        MAW_window.title('Moving Weight')
+
+        MAW_frame = ttk.LabelFrame(MAW_window, text='Moving Weight')
+        MAW_frame.grid(row=0,column=1,padx=5,pady=5,ipadx=5,ipady=5)
+
+        Window_label = ttk.Label(MAW_frame, text='Window',font=16)
+        Window_label.grid(row=0,column=0, padx=5,pady=2)
+
+        Window_input = ttk.Entry(MAW_frame)
+        Window_input.insert(0, self.window)
+        Window_input.grid(row=0,column=1, padx=5,pady=2)
+
+        def window_get():
+            try:
+                self.window = int(Window_input.get())
+            except:
+                tk.messagebox.showerror("Error","Window must be a number")
+            MAW_window.destroy()
+
+        submit_button = ttk.Button(MAW_frame, text='Done', command=window_get)
+        submit_button.grid(row=2,pady=5, columnspan=2)
+
+
+
+
     def upload_vid_expert(self):
         
         self.expert_area.filename = tk.filedialog.askopenfilename(title="Please Select a Video", filetypes=(("mp4 file","*.mp4"),("all files", "*.*")))
@@ -250,15 +284,19 @@ class App():
                 weight_arr = np.array(self.weight_angle)
         else:
             weight_arr = np.ones(16)
+        
         print(weight_arr)
+        print(self.MAW_var.get())
+        print(self.norm.get())
         print(self.thresh_var.get())
         print(self.expo_var.get())
         if 'cosine' in self.method.get().lower():
             limb_expert = find_limb(world_ladk_expert)
             limb_student = find_limb(world_ladk_student)
             path, dist_mat, dist_lndmk_mat, cost_mat, cost = dtw(limb_expert,limb_student,cosine_similarity,
-                                                                weight=weight_arr, norm_value=45, windows=50,
-                                                                thresh=self.thresh_var.get(), MAW_method='aj',
+                                                                weight=weight_arr, MAW=self.MAW_var.get(), 
+                                                                norm_value=int(self.norm.get()), 
+                                                                windows=50, thresh=self.thresh_var.get(),
                                                                 expo=self.expo_var.get())
             print(cost)
 

@@ -1,9 +1,10 @@
 import numpy as np
 from angle import angle_difference, angle_similarity
 from cosine import cosine_difference, cosine_similarity
+from MAW import *
 
 def dm(extracted_ladk_vid1: np.array, extracted_ladk_vid2: np.array, sim_diff_function,
-       weight, norm_value: int, windows: int, method='aj', expo=False):
+       weight, MAW, norm_value: int, windows: int, expo=False):
 
     N = extracted_ladk_vid1.shape[0]
     M = extracted_ladk_vid2.shape[0]
@@ -11,9 +12,8 @@ def dm(extracted_ladk_vid1: np.array, extracted_ladk_vid2: np.array, sim_diff_fu
     dist_mat = np.zeros((N, M))
     dist_ladk_mat = np.zeros((N, M), dtype=object)
 
-    if isinstance(weight, str):
-        if weight.lower() == 'auto':
-            weight = MA_W(extracted_ladk_vid1, windows, norm_value, method)
+    if MAW:
+        weight = MA_W(extracted_ladk_vid1, windows, norm_value)
     else:
         weight = [weight]*max(N, M)
 
@@ -115,15 +115,15 @@ def unique_path(path):
     return np.array(new_path)
 
 def dtw(extracted_ladk_vid1: np.array, extracted_ladk_vid2: np.array, sim_diff_function,
-        weight, norm_value=180, windows=50, thresh=False, MAW_method='aj', expo=False):
+        weight, MAW, norm_value=180, windows=50, thresh=False, expo=False):
 
     dist_lndmk_mat, dist_mat = dm(extracted_ladk_vid1=extracted_ladk_vid1,
                                   extracted_ladk_vid2=extracted_ladk_vid2,
                                   sim_diff_function=sim_diff_function,
                                   weight=weight,
+                                  MAW=MAW,
                                   norm_value=norm_value,
                                   windows=windows,
-                                  method=MAW_method,
                                   expo=expo)
 
     path, cost_mat, vert_hor = dp(dist_mat=dist_mat,
