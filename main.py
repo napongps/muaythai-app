@@ -18,7 +18,7 @@ class App():
 
         self.weight_angle= [1]*12
         self.weight_cosine = [1]*16
-        self.window = 0
+        self.window_output = 0
 
         self.layout()
         self.widget()
@@ -75,9 +75,19 @@ class App():
         play_button_student = ttk.Button(self.student_area, text = 'Play', command=self.play_video_student) # command = link to onclick function
         play_button_student.grid(row=2, column= 0, pady=10)
 
+        # path label
+        self.video_dir_expert = ttk.Label(self.expert_area, text='')
+        self.video_dir_expert.grid(row = 3, column=0)
+        self.video_dir_student = ttk.Label(self.student_area, text='')
+        self.video_dir_student.grid(row = 3, column=0)
+
         # calculate button
         cal_button = ttk.Button(self.mainframe, text = 'Go', command=self.calculate_video) # command = link to onclick function
         cal_button.grid(row=2, column= 0, columnspan=3, pady=10)
+
+        # Similarity score label
+        self.score_text = ttk.Label(self.result_area, text="Score here!",font=16)
+        self.score_text.grid(row=1,column=0, columnspan=6, padx=10,pady=10)
 
         # method dropdown
         method_list=["Cosine_similarity", "Angle_Similarity"]
@@ -207,32 +217,32 @@ class App():
             submit_button = ttk.Button(input_weight_area, text='Done', command=weight_get)
             submit_button.grid(row=3,pady=10, columnspan=3)
 
-
-
     def MAW_window(self):
+        if (self.MAW_var.get()):
+            MAW_window = ttk.Toplevel()
+            MAW_window.title('Moving Weight')
 
-        MAW_window = ttk.Toplevel()
-        MAW_window.title('Moving Weight')
+            MAW_frame = ttk.LabelFrame(MAW_window, text='Moving Weight')
+            MAW_frame.grid(row=0,column=1,padx=5,pady=5,ipadx=5,ipady=5)
 
-        MAW_frame = ttk.LabelFrame(MAW_window, text='Moving Weight')
-        MAW_frame.grid(row=0,column=1,padx=5,pady=5,ipadx=5,ipady=5)
+            Window_label = ttk.Label(MAW_frame, text='Window',font=16)
+            Window_label.grid(row=0,column=0, padx=5,pady=2)
 
-        Window_label = ttk.Label(MAW_frame, text='Window',font=16)
-        Window_label.grid(row=0,column=0, padx=5,pady=2)
+            window = tk.StringVar()
+            Window_input = ttk.Entry(MAW_frame, textvariable=window)
+            Window_input.insert(0, self.window_output)
+            Window_input.grid(row=0,column=1, padx=5,pady=2)
 
-        Window_input = ttk.Entry(MAW_frame)
-        Window_input.insert(0, self.window)
-        Window_input.grid(row=0,column=1, padx=5,pady=2)
+            def window_get():
+                
+                try:
+                    self.window_output = int(window.get())
+                except:
+                    tk.messagebox.showerror("Error","Window must be a number")
+                MAW_window.destroy()
 
-        def window_get():
-            try:
-                self.window = int(Window_input.get())
-            except:
-                tk.messagebox.showerror("Error","Window must be a number")
-            MAW_window.destroy()
-
-        submit_button = ttk.Button(MAW_frame, text='Done', command=window_get)
-        submit_button.grid(row=2,pady=5, columnspan=2)
+            submit_button = ttk.Button(MAW_frame, text='Done', command=window_get)
+            submit_button.grid(row=2,pady=5, columnspan=2)
 
 
 
@@ -240,8 +250,7 @@ class App():
     def upload_vid_expert(self):
         
         self.expert_area.filename = tk.filedialog.askopenfilename(title="Please Select a Video", filetypes=(("mp4 file","*.mp4"),("all files", "*.*")))
-        self.video_dir = ttk.Label(self.expert_area, text=self.expert_area.filename)
-        self.video_dir.grid(row = 3, column=0)
+        self.video_dir_expert.config(text=self.expert_area.filename)
 
         self.player_expert = TkinterVideo(self.expert_area_vid, keep_aspect=True)
         self.player_expert.load(self.expert_area.filename)
@@ -249,8 +258,7 @@ class App():
     def upload_vid_student(self):
         
         self.student_area.filename = tk.filedialog.askopenfilename(title="Please Select a Video", filetypes=(("mp4 file","*.mp4"),("all files", "*.*")))
-        self.video_dir = ttk.Label(self.student_area, text=self.student_area.filename)
-        self.video_dir.grid(row = 3, column=0)
+        self.video_dir_student.config(text=self.student_area.filename)
 
         self.player_student = TkinterVideo(self.student_area_vid, keep_aspect=True)
         self.player_student.load(self.student_area.filename)
@@ -283,29 +291,32 @@ class App():
             else:
                 weight_arr = np.array(self.weight_angle)
         else:
-            weight_arr = np.ones(16)
-        
-        print(weight_arr)
-        print(self.MAW_var.get())
-        print(self.norm.get())
-        print(self.thresh_var.get())
-        print(self.expo_var.get())
+            if 'cosine' in self.method.get().lower():
+                weight_arr = np.ones(16)
+            else:
+                weight_arr = np.ones(12)
+            
+
         if 'cosine' in self.method.get().lower():
             limb_expert = find_limb(world_ladk_expert)
             limb_student = find_limb(world_ladk_student)
             path, dist_mat, dist_lndmk_mat, cost_mat, cost = dtw(limb_expert,limb_student,cosine_similarity,
                                                                 weight=weight_arr, MAW=self.MAW_var.get(), 
                                                                 norm_value=int(self.norm.get()), 
-                                                                windows=50, thresh=self.thresh_var.get(),
+                                                                windows=self.window_output, thresh=self.thresh_var.get(),
                                                                 expo=self.expo_var.get())
-            print(cost)
+
 
         else:
             angle_expert = find_angle(world_ladk_expert)
             angle_student = find_angle(world_ladk_student)
-            path, dist_mat, dist_lndmk_mat, cost_mat, cost = dtw(angle_expert,angle_student,angle_similarity,np.ones(12),45)
-            print(cost)
-
+            path, dist_mat, dist_lndmk_mat, cost_mat, cost = dtw(angle_expert,angle_student,angle_similarity,
+                                                                weight=weight_arr, MAW=self.MAW_var.get(), 
+                                                                norm_value=int(self.norm.get()), 
+                                                                windows=self.window_output, thresh=self.thresh_var.get(),
+                                                                expo=self.expo_var.get())
+        self.score_text.config(text=f'Similarity score: {cost*100:.2f}%')
+        
 
         
 

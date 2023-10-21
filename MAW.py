@@ -1,4 +1,6 @@
 import numpy as np
+from angle import *
+from cosine import *
 
 def diff_move(extracted_ladk: np.array, windows: int, curr_frame: int, norm_value: int):
 
@@ -6,7 +8,7 @@ def diff_move(extracted_ladk: np.array, windows: int, curr_frame: int, norm_valu
         adj_diff = angle_difference(ang1=extracted_ladk[curr_frame],
                                     ang2=extracted_ladk[curr_frame-1],
                                     weight=np.ones(12),
-                                    norm_value=norm_value,
+                                    max_angle=norm_value,
                                     expo=False)
 
     if extracted_ladk.shape[1] == 16:
