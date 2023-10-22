@@ -1,4 +1,6 @@
 import os
+from concurrent.futures import ProcessPoolExecutor
+import time
 import cv2
 import tkinter.filedialog
 from tkVideoPlayer import TkinterVideo
@@ -12,6 +14,8 @@ from DTW import dtw
 
 class App():
     def __init__(self):
+    
+
         self.root = ttk.Window(themename = 'darkly') # create main window of the app
         self.root.geometry('1000x600') # width x height
         self.root.title("Muaythai comparison") # title of the window
@@ -276,14 +280,22 @@ class App():
 
     def calculate_video(self):
 
+        t0 = time.time()
+
+        exe = ProcessPoolExecutor(os.cpu_count())
+        
         try:
-            cam_ladk_expert, world_ladk_expert, all_frame_expert = landmark_detection(self.expert_area.filename)
+            ladk_expert = exe.submit(landmark_detection, self.expert_area.filename)
         except:
             tk.messagebox.showerror("Cannot calculate","Please upload expert's video.")
         try:
-            cam_ladk_student, world_ladk_student, all_frame_student = landmark_detection(self.student_area.filename)
+            ladk_student = exe.submit(landmark_detection, self.student_area.filename)
         except:
             tk.messagebox.showerror("Cannot calculate","Please upload student's video.")
+
+        cam_ladk_expert, world_ladk_expert, all_frame_expert = ladk_expert.result()
+        cam_ladk_student, world_ladk_student, all_frame_student = ladk_student.result()
+        
 
         if self.weight_var.get():
             if 'cosine' in self.method.get().lower():
@@ -298,8 +310,11 @@ class App():
             
 
         if 'cosine' in self.method.get().lower():
-            limb_expert = find_limb(world_ladk_expert)
-            limb_student = find_limb(world_ladk_student)
+            limb_expert_exe = exe.submit(find_limb, world_ladk_expert)
+            limb_student_exe = exe.submit(find_limb, world_ladk_student)
+            limb_expert = limb_expert_exe.result()
+            limb_student = limb_student_exe.result()
+            exe.shutdown(wait=True)
             path, dist_mat, dist_lndmk_mat, cost_mat, cost = dtw(limb_expert,limb_student,cosine_similarity,
                                                                 weight=weight_arr, MAW=self.MAW_var.get(), 
                                                                 norm_value=int(self.norm.get()), 
@@ -308,8 +323,11 @@ class App():
 
 
         else:
-            angle_expert = find_angle(world_ladk_expert)
-            angle_student = find_angle(world_ladk_student)
+            angle_expert_exe = exe.submit(find_angle, world_ladk_expert)
+            angle_student_exe = exe.submit(find_angle, world_ladk_student)
+            angle_expert = angle_expert_exe.result()
+            angle_student = angle_student_exe.result()
+            exe.shutdown(wait=True)
             path, dist_mat, dist_lndmk_mat, cost_mat, cost = dtw(angle_expert,angle_student,angle_similarity,
                                                                 weight=weight_arr, MAW=self.MAW_var.get(), 
                                                                 norm_value=int(self.norm.get()), 
@@ -317,7 +335,9 @@ class App():
                                                                 expo=self.expo_var.get())
         self.score_text.config(text=f'Similarity score: {cost*100:.2f}%')
         
+        t1 = time.time()
 
+        print('เวลาในการคำนวณ: %f'%(t1-t0))
         
 
 if __name__ == "__main__":
