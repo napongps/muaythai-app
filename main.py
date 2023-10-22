@@ -2,19 +2,22 @@ import os
 from concurrent.futures import ProcessPoolExecutor
 import time
 import cv2
+
+from PIL import ImageTk, Image
 import tkinter.filedialog
 from tkVideoPlayer import TkinterVideo
 import tkinter as tk
 # from tkinter import ttk
 import ttkbootstrap as ttk
+
 from detect_landmark import landmark_detection
 from angle import *
 from cosine import *
 from DTW import dtw
+from result import *
 
 class App():
     def __init__(self):
-    
 
         self.root = ttk.Window(themename = 'darkly') # create main window of the app
         self.root.geometry('1000x600') # width x height
@@ -91,7 +94,7 @@ class App():
 
         # Similarity score label
         self.score_text = ttk.Label(self.result_area, text="Score here!",font=16)
-        self.score_text.grid(row=1,column=0, columnspan=6, padx=10,pady=10)
+        self.score_text.grid(row=0,column=0, columnspan=6, padx=10,pady=10)
 
         # method dropdown
         method_list=["Cosine_similarity", "Angle_Similarity"]
@@ -249,8 +252,6 @@ class App():
             submit_button.grid(row=2,pady=5, columnspan=2)
 
 
-
-
     def upload_vid_expert(self):
         
         self.expert_area.filename = tk.filedialog.askopenfilename(title="Please Select a Video", filetypes=(("mp4 file","*.mp4"),("all files", "*.*")))
@@ -276,7 +277,7 @@ class App():
     def play_video_student(self):
     
         self.player_student.grid()
-        self.player_student.play()
+        self.player_student.play()   
 
     def calculate_video(self):
 
@@ -315,11 +316,11 @@ class App():
             limb_expert = limb_expert_exe.result()
             limb_student = limb_student_exe.result()
             exe.shutdown(wait=True)
-            path, dist_mat, dist_lndmk_mat, cost_mat, cost = dtw(limb_expert,limb_student,cosine_similarity,
-                                                                weight=weight_arr, MAW=self.MAW_var.get(), 
-                                                                norm_value=int(self.norm.get()), 
-                                                                windows=self.window_output, thresh=self.thresh_var.get(),
-                                                                expo=self.expo_var.get())
+            self.path, self.dist_mat, self.dist_lndmk_mat, self.cost_mat, self.cost = dtw(limb_expert,limb_student,cosine_similarity,
+                                                                                            weight=weight_arr, MAW=self.MAW_var.get(), 
+                                                                                            norm_value=int(self.norm.get()), 
+                                                                                            windows=self.window_output, thresh=self.thresh_var.get(),
+                                                                                            expo=self.expo_var.get())
 
 
         else:
@@ -328,16 +329,49 @@ class App():
             angle_expert = angle_expert_exe.result()
             angle_student = angle_student_exe.result()
             exe.shutdown(wait=True)
-            path, dist_mat, dist_lndmk_mat, cost_mat, cost = dtw(angle_expert,angle_student,angle_similarity,
-                                                                weight=weight_arr, MAW=self.MAW_var.get(), 
-                                                                norm_value=int(self.norm.get()), 
-                                                                windows=self.window_output, thresh=self.thresh_var.get(),
-                                                                expo=self.expo_var.get())
-        self.score_text.config(text=f'Similarity score: {cost*100:.2f}%')
+            self.path, self.dist_mat, self.dist_lndmk_mat, self.cost_mat, self.cost = dtw(angle_expert,angle_student,angle_similarity,
+                                                                                            weight=weight_arr, MAW=self.MAW_var.get(), 
+                                                                                            norm_value=int(self.norm.get()), 
+                                                                                            windows=self.window_output, thresh=self.thresh_var.get(),
+                                                                                            expo=self.expo_var.get())
+        self.score_text.config(text=f'Similarity score: {self.cost*100:.2f}%')
         
+        self.merge_img = display_error(self.path, self.dist_mat, self.dist_lndmk_mat, 
+                                                all_frame_expert, all_frame_student, 
+                                                cam_ladk_expert, cam_ladk_student,
+                                                self.method.get().lower())
+        
+
         t1 = time.time()
 
         print('เวลาในการคำนวณ: %f'%(t1-t0))
+
+
+        # def display_result(cam_landmark, width, height, image, dist_lndmk_mat, sim_diff_function):
+        def display_result():
+            # draw_error(cam_landmark, width, height, image, dist_lndmk_mat, sim_diff_function)
+            result_window = ttk.Toplevel()
+            result_window.title('Video result')
+
+            result_label = ttk.Label(result_window)
+            result_label.grid(row=0,column=0, padx=5,pady=2)
+
+            
+            def video_stream(frame):
+                if frame < len(self.merge_img):
+                    cv2img = cv2.resize(self.merge_img[frame], (0, 0), fx = 0.5, fy = 0.5)
+                    cv2img = cv2.cvtColor(cv2img, cv2.COLOR_BGR2RGB)
+                    img = Image.fromarray(cv2img)
+                    imgtk = ImageTk.PhotoImage(image=img)
+                    result_label.imgtk = imgtk
+                    result_label.configure(image=imgtk)
+                result_label.after(30, lambda: video_stream(frame+1))
+
+            video_stream(0)
+
+        show_result_button = ttk.Button(self.result_area, text = 'Show result', command=display_result) # command = link to onclick function 
+        # show_result_button = ttk.Button(self.result_area, text = 'Show result', command=lambda: display_result(cam_ladk_expert, all_frame_expert[0].shape[1], all_frame_expert[0].shape[0], all_frame_expert[0], self.dist_lndmk_mat, self.method.get().lower())) # command = link to onclick function
+        show_result_button.grid(row=1, column= 0, pady=5)
         
 
 if __name__ == "__main__":
