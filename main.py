@@ -20,7 +20,7 @@ class App():
     def __init__(self):
 
         self.root = ttk.Window(themename = 'darkly') # create main window of the app
-        self.root.geometry('1000x600') # width x height
+        self.root.geometry('1200x800') # width x height
         self.root.title("Muaythai comparison") # title of the window
 
         self.weight_angle= [1]*12
@@ -37,14 +37,14 @@ class App():
 
         # expert frame
         self.expert_area = ttk.LabelFrame(self.mainframe, text="Expert")
-        self.expert_area.grid(row=0,column=0, sticky='W',padx=5, pady=5)
+        self.expert_area.grid(row=0,column=0,padx=5, pady=5)
 
         self.expert_area_vid = ttk.Label(self.mainframe)
         self.expert_area_vid.grid(row=1,column=0,padx=5, pady=5)
 
         # student frame
         self.student_area = ttk.LabelFrame(self.mainframe, text="Student")
-        self.student_area.grid(row=0,column=1, sticky='E', padx=5, pady=5)
+        self.student_area.grid(row=0,column=1, padx=5, pady=5)
 
         self.student_area_vid = ttk.Label(self.mainframe)
         self.student_area_vid.grid(row=1,column=1, padx=5, pady=5)
@@ -55,7 +55,7 @@ class App():
 
         # option frame
         self.option_area = ttk.Labelframe(self.mainframe, text="Options")
-        self.option_area.grid(row=0,column=2, sticky='E', padx=5, pady=5, ipadx= 5, ipady=5)
+        self.option_area.grid(row=0,column=2, padx=5, pady=5, ipadx= 5, ipady=5)
         
         self.mainframe.pack(fill='both', expand=True) # fill window with frame
 
@@ -259,6 +259,7 @@ class App():
 
         self.player_expert = TkinterVideo(self.expert_area_vid, keep_aspect=True)
         self.player_expert.load(self.expert_area.filename)
+        self.player_expert.bind("<<Loaded>>", lambda e: e.widget.config(width=400, height=250))
         
     def upload_vid_student(self):
         
@@ -267,16 +268,17 @@ class App():
 
         self.player_student = TkinterVideo(self.student_area_vid, keep_aspect=True)
         self.player_student.load(self.student_area.filename)
+        self.player_student.bind("<<Loaded>>", lambda e: e.widget.config(width=400, height=250))
 
     
     def play_video_expert(self):
         
-        self.player_expert.grid()
+        self.player_expert.grid(row=0)
         self.player_expert.play()
 
     def play_video_student(self):
     
-        self.player_student.grid()
+        self.player_student.grid(row=0)
         self.player_student.play()   
 
     def calculate_video(self):
