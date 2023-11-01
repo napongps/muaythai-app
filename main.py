@@ -1,7 +1,9 @@
+import threading
 import os
 from concurrent.futures import ProcessPoolExecutor
 import time
 import cv2
+
 
 from PIL import ImageTk, Image
 import tkinter.filedialog
@@ -21,46 +23,65 @@ class App():
 
         self.root = ttk.Window(themename = 'darkly') # create main window of the app
         self.root.geometry('1200x800') # width x height
+        self.root.resizable(False,False)
         self.root.title("Muaythai comparison") # title of the window
+        
 
         self.weight_angle= [1]*12
         self.weight_cosine = [1]*16
         self.window_output = 0
-
+        self.thread_cal_vid = threading.Thread(target=self.calculate_video)
+        
         self.layout()
         self.widget()
 
         self.root.mainloop() # show the window on screen
 
     def layout(self):
-        self.mainframe = ttk.Frame(self.root) # create frame and told its parent (root)
+        s = ttk.Style()
+        s.configure('Frame1.TFrame', background='#FF4C33')
+        self.top = ttk.Frame(self.root,style='Frame1.TFrame') # create frame and told its parent (root)
+        s2 = ttk.Style()
+        s2.configure('Frame2.TFrame', background='#33FFF3')
+        self.bottom = ttk.Frame(self.root, style='Frame2.TFrame')
+        s3 = ttk.Style()
+        s3.configure('Frame3.TFrame', background='#E9FF33')
+        self.right = ttk.Frame(self.root, style='Frame3.TFrame')
 
         # expert frame
-        self.expert_area = ttk.LabelFrame(self.mainframe, text="Expert")
-        self.expert_area.grid(row=0,column=0,padx=5, pady=5)
+        self.expert_area = ttk.LabelFrame(self.top, text="Expert")
+        self.expert_area.grid(row=0,column=0,padx=30, pady=5)
+        # self.expert_area.grid_propagate(0)
 
-        self.expert_area_vid = ttk.Label(self.mainframe)
-        self.expert_area_vid.grid(row=1,column=0,padx=5, pady=5)
+        self.expert_area_vid = ttk.Label(self.top)
+        self.expert_area_vid.grid(row=1,column=0,padx=30, pady=5)
 
         # student frame
-        self.student_area = ttk.LabelFrame(self.mainframe, text="Student")
-        self.student_area.grid(row=0,column=1, padx=5, pady=5)
+        self.student_area = ttk.LabelFrame(self.top, text="Student")
+        self.student_area.grid(row=0,column=1, padx=30, pady=5)
+        # self.student_area.grid_propagate(0)
 
-        self.student_area_vid = ttk.Label(self.mainframe)
-        self.student_area_vid.grid(row=1,column=1, padx=5, pady=5)
+        self.student_area_vid = ttk.Label(self.top)
+        self.student_area_vid.grid(row=1,column=1, padx=100, pady=5)
 
         # result frame
-        self.result_area = ttk.LabelFrame(self.mainframe, text="Result")
+        self.result_area = ttk.LabelFrame(self.bottom, text="Result")
         self.result_area.grid(row=3, column=0, rowspan=2, columnspan=2 , sticky='S',padx=5, pady=5)
+        
 
         # option frame
-        self.option_area = ttk.Labelframe(self.mainframe, text="Options")
+        self.option_area = ttk.Labelframe(self.right, text="Options")
         self.option_area.grid(row=0,column=2, padx=5, pady=5, ipadx= 5, ipady=5)
-        
-        self.mainframe.pack(fill='both', expand=True) # fill window with frame
+
+        self.top.grid(row=0,column=0)
+        # self.top.grid_propagate(0)
+        self.bottom.grid(row=1,column=0)
+        # self.bottom.grid_propagate(0)
+        self.right.grid(row=0, column=2, rowspan=2)
+        # self.right.grid_propagate(0)
 
     def widget(self):
-        
+
         #Heading
         text_expert = ttk.Label(self.expert_area, text='วิดิโอครูฝึก', font=("Brass Mono", 30)) # put text on mainframe
         text_expert.grid(row = 0, column = 0) # specify where text is in mainframe
@@ -89,7 +110,7 @@ class App():
         self.video_dir_student.grid(row = 3, column=0)
 
         # calculate button
-        cal_button = ttk.Button(self.mainframe, text = 'Go', command=self.calculate_video) # command = link to onclick function
+        cal_button = ttk.Button(self.top, text = 'Go', command=self.thread_cal_vid.start) # command = link to onclick function
         cal_button.grid(row=2, column= 0, columnspan=3, pady=10)
 
         # Similarity score label
@@ -117,14 +138,14 @@ class App():
         self.weight_var = tk.IntVar()
         self.weight_var.set(0)
 
-        weight_check = ttk.Checkbutton(self.option_area, text='Weight', variable=self.weight_var, command=self.input_weight)
-        weight_check.grid(row=2, sticky='W', padx=5)        
+        self.weight_check = ttk.Checkbutton(self.option_area, text='Weight', variable=self.weight_var, command=self.input_weight)
+        self.weight_check.grid(row=2, sticky='W', padx=5)        
 
         self.MAW_var = tk.IntVar()
         self.MAW_var.set(0)
 
-        MAW_check = ttk.Checkbutton(self.option_area, text='Moving Weight', variable=self.MAW_var, command=self.MAW_window)
-        MAW_check.grid(row=3, sticky='W', padx=5)
+        self.MAW_check = ttk.Checkbutton(self.option_area, text='Moving Weight', variable=self.MAW_var, command=self.MAW_window)
+        self.MAW_check.grid(row=3, sticky='W', padx=5)
 
         self.thresh_var = tk.IntVar()
         self.thresh_var.set(0)
@@ -145,7 +166,12 @@ class App():
         kf_check.grid(row=6, sticky='W', padx=5)
 
     def input_weight(self):
-        
+    
+        if not self.weight_var.get():
+            self.MAW_check['state']=tk.NORMAL
+        else:
+            self.MAW_check['state']=tk.DISABLED
+
         if 'cosine' in self.method.get().lower():
             weight_label_LR=['เท้า','หน้าแข้ง','ต้นขา','สีข้าง','มือ','ปลายแขน','ต้นแขน']
             cosine_flag = True
@@ -225,6 +251,12 @@ class App():
             submit_button.grid(row=3,pady=10, columnspan=3)
 
     def MAW_window(self):
+
+        if not self.MAW_var.get():
+            self.weight_check['state']=tk.NORMAL
+        else:
+            self.weight_check['state']=tk.DISABLED
+        
         if (self.MAW_var.get()):
             MAW_window = ttk.Toplevel()
             MAW_window.title('Moving Weight')
@@ -235,9 +267,9 @@ class App():
             Window_label = ttk.Label(MAW_frame, text='Window',font=16)
             Window_label.grid(row=0,column=0, padx=5,pady=2)
 
-            window = tk.StringVar()
+            window = tk.StringVar(value=60)
             Window_input = ttk.Entry(MAW_frame, textvariable=window)
-            Window_input.insert(0, self.window_output)
+            # Window_input.insert(0, self.window_output)
             Window_input.grid(row=0,column=1, padx=5,pady=2)
 
             def window_get():
@@ -282,6 +314,8 @@ class App():
         self.player_student.play()   
 
     def calculate_video(self):
+
+        self.score_text.config(text='Calculating...')
 
         t0 = time.time()
 
@@ -336,22 +370,22 @@ class App():
                                                                                             norm_value=int(self.norm.get()), 
                                                                                             windows=self.window_output, thresh=self.thresh_var.get(),
                                                                                             expo=self.expo_var.get())
-        self.score_text.config(text=f'Similarity score: {self.cost*100:.2f}%')
         
         self.merge_img = display_error(self.path, self.dist_mat, self.dist_lndmk_mat, 
                                                 all_frame_expert, all_frame_student, 
                                                 cam_ladk_expert, cam_ladk_student,
                                                 self.method.get().lower())
         
-
         t1 = time.time()
-
         print('เวลาในการคำนวณ: %f'%(t1-t0))
-
+        
+        self.score_text.config(text=f'Similarity score: {self.cost*100:.2f}%')
 
         # def display_result(cam_landmark, width, height, image, dist_lndmk_mat, sim_diff_function):
         def display_result():
             # draw_error(cam_landmark, width, height, image, dist_lndmk_mat, sim_diff_function)
+            self.thread_cal_vid.join()
+            
             result_window = ttk.Toplevel()
             result_window.title('Video result')
 
