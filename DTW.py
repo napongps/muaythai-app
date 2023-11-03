@@ -27,6 +27,16 @@ def dm(extracted_ladk_vid1: np.array, extracted_ladk_vid2: np.array, sim_diff_fu
 
     return dist_ladk_mat, dist_mat
 
+def last_path(path_list, expert_frame):
+    res_path = []
+    for i,j in path_list:
+
+        res_path.append((i,j))
+        if i == expert_frame-1:
+            break
+
+    return res_path
+
 def dp(dist_mat: np.array, mode: str):
     """
     ขวาล่าง-ซ้ายบน (cost)
@@ -99,8 +109,9 @@ def dp(dist_mat: np.array, mode: str):
     # Strip infinity edges from cost_mat before returning
     cost_mat = cost_mat[1:, 1:]
     cost_mat = cost_mat/len(path)
+    path = last_path(path[::-1], N)
 
-    return path[::-1], cost_mat, vert_hor
+    return path, cost_mat, vert_hor
 
 def unique_path(path):
     new_path = []

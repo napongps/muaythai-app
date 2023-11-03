@@ -30,12 +30,24 @@ class App():
         self.weight_angle= [1]*12
         self.weight_cosine = [1]*16
         self.window_output = 0
-        self.thread_cal_vid = threading.Thread(target=self.calculate_video)
-        
+        self.thread_list=[]
+        print(len(self.thread_list))
         self.layout()
         self.widget()
 
         self.root.mainloop() # show the window on screen
+
+    def start_thread(self):
+        self.thread_list.append(threading.Thread(target=self.calculate_video))
+        self.thread_list[-1].start()
+    
+    def end_thread(self):
+        print(len(self.thread_list))
+        if len(self.thread_list) > 0:
+            for i,th in enumerate(self.thread_list):
+                if th.is_alive():
+                    th.join()
+                    del self.thread_list[i]
 
     def layout(self):
         s = ttk.Style()
@@ -53,7 +65,7 @@ class App():
         self.expert_area.grid(row=0,column=0,padx=30, pady=5)
         # self.expert_area.grid_propagate(0)
 
-        self.expert_area_vid = ttk.Label(self.top)
+        self.expert_area_vid = ttk.Frame(self.top)
         self.expert_area_vid.grid(row=1,column=0,padx=30, pady=5)
 
         # student frame
@@ -61,7 +73,7 @@ class App():
         self.student_area.grid(row=0,column=1, padx=30, pady=5)
         # self.student_area.grid_propagate(0)
 
-        self.student_area_vid = ttk.Label(self.top)
+        self.student_area_vid = ttk.Frame(self.top)
         self.student_area_vid.grid(row=1,column=1, padx=100, pady=5)
 
         # result frame
@@ -110,7 +122,7 @@ class App():
         self.video_dir_student.grid(row = 3, column=0)
 
         # calculate button
-        cal_button = ttk.Button(self.top, text = 'Go', command=self.thread_cal_vid.start) # command = link to onclick function
+        cal_button = ttk.Button(self.top, text = 'Go', command=self.start_thread) # command = link to onclick function
         cal_button.grid(row=2, column= 0, columnspan=3, pady=10)
 
         # Similarity score label
@@ -285,7 +297,7 @@ class App():
 
 
     def upload_vid_expert(self):
-        
+        self.end_thread()
         self.expert_area.filename = tk.filedialog.askopenfilename(title="Please Select a Video", filetypes=(("mp4 file","*.mp4"),("all files", "*.*")))
         self.video_dir_expert.config(text=self.expert_area.filename)
 
@@ -294,7 +306,7 @@ class App():
         self.player_expert.bind("<<Loaded>>", lambda e: e.widget.config(width=400, height=250))
         
     def upload_vid_student(self):
-        
+        self.end_thread()
         self.student_area.filename = tk.filedialog.askopenfilename(title="Please Select a Video", filetypes=(("mp4 file","*.mp4"),("all files", "*.*")))
         self.video_dir_student.config(text=self.student_area.filename)
 
@@ -380,11 +392,11 @@ class App():
         print('เวลาในการคำนวณ: %f'%(t1-t0))
         
         self.score_text.config(text=f'Similarity score: {self.cost*100:.2f}%')
+        
 
         # def display_result(cam_landmark, width, height, image, dist_lndmk_mat, sim_diff_function):
         def display_result():
             # draw_error(cam_landmark, width, height, image, dist_lndmk_mat, sim_diff_function)
-            self.thread_cal_vid.join()
             
             result_window = ttk.Toplevel()
             result_window.title('Video result')
@@ -392,7 +404,6 @@ class App():
             result_label = ttk.Label(result_window)
             result_label.grid(row=0,column=0, padx=5,pady=2)
 
-            
             def video_stream(frame):
                 if frame < len(self.merge_img):
                     cv2img = cv2.resize(self.merge_img[frame], (0, 0), fx = 0.5, fy = 0.5)
