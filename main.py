@@ -30,8 +30,10 @@ class App():
         self.weight_angle= [1]*12
         self.weight_cosine = [1]*16
         self.window_output = 0
+        self.kf_images = []
+
         self.thread_list=[]
-        print(len(self.thread_list))
+
         self.layout()
         self.widget()
 
@@ -40,6 +42,7 @@ class App():
     def start_thread(self):
         self.thread_list.append(threading.Thread(target=self.calculate_video))
         self.thread_list[-1].start()
+        print('Threads: ',len(self.thread_list))
     
     def end_thread(self):
         print(len(self.thread_list))
@@ -174,8 +177,51 @@ class App():
         self.kf_var = tk.IntVar()
         self.kf_var.set(0)
 
-        kf_check = ttk.Checkbutton(self.option_area, text='Keyframes', variable=self.kf_var)
+        kf_check = ttk.Checkbutton(self.option_area, text='Keyframes', variable=self.kf_var, command=self.keyframe_window)
         kf_check.grid(row=6, sticky='W', padx=5)
+
+    def keyframe_window(self, image_idx=0, create=True):
+
+        if (self.kf_var.get()) and create:
+
+            self.kf_images=[]
+            try:
+                cap = cv2.VideoCapture(self.expert_area.filename)
+                i=0
+                while cap.isOpened():
+                    ret,frame = cap.read()
+                    if ret:
+                        frame = cv2.putText(frame, str(i), (50, 50) , cv2.FONT_HERSHEY_SIMPLEX ,  
+                                1, (255, 0, 0), 2, cv2.LINE_AA) 
+                        frame=cv2.resize(frame, (0, 0), fx = 0.5, fy = 0.5)
+                        frame=Image.fromarray(frame[:,:,::-1])
+                        self.kf_images.append(ImageTk.PhotoImage(frame))
+                        i+=1
+                    else:
+                        break
+                cap.release()
+                self.kf_images[image_idx]
+            except:
+                tk.messagebox.showerror("Error", "Please upload expert's video")
+                return
+
+            self.keyframe_top = ttk.Toplevel()
+            self.keyframe_top.title('Choose Keyframe')
+            
+
+        print(image_idx)
+        label = ttk.Label(self.keyframe_top, image=self.kf_images[image_idx])
+        label.grid(row=0,column=0, columnspan=3)
+        label.imgtk = self.kf_images[image_idx]
+        label.configure(image=self.kf_images[image_idx])
+
+        button_frame = ttk.Frame(self.keyframe_top)
+        button_frame.grid(row=1,column=0)
+
+        button_forward = ttk.Button(button_frame, text="forward",command=lambda: self.keyframe_window(image_idx+1,False))
+        button_forward.grid(row=0,column=1,padx=10,pady=5)
+        button_back = ttk.Button(button_frame, text="Back",command=lambda: self.keyframe_window(image_idx-1,False))
+        button_back.grid(row=0,column=0,padx=10,pady=5)
 
     def input_weight(self):
     
