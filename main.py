@@ -30,7 +30,7 @@ class App():
         self.weight_angle= [1]*12
         self.weight_cosine = [1]*16
         self.window_output = 0
-        self.kf_images = []
+        self.kf_list = []
 
         self.thread_list=[]
 
@@ -162,28 +162,29 @@ class App():
         self.MAW_check = ttk.Checkbutton(self.option_area, text='Moving Weight', variable=self.MAW_var, command=self.MAW_window)
         self.MAW_check.grid(row=3, sticky='W', padx=5)
 
-        self.thresh_var = tk.IntVar()
-        self.thresh_var.set(0)
+        # self.thresh_var = tk.IntVar()
+        # self.thresh_var.set(0)
 
-        thresh_check = ttk.Checkbutton(self.option_area, text='Threshold', variable=self.thresh_var)
-        thresh_check.grid(row=4, sticky='W', padx=5)
+        # thresh_check = ttk.Checkbutton(self.option_area, text='Threshold', variable=self.thresh_var)
+        # thresh_check.grid(row=4, sticky='W', padx=5)
 
         self.expo_var = tk.IntVar()
         self.expo_var.set(0)
 
         expo_check = ttk.Checkbutton(self.option_area, text='Exponential', variable=self.expo_var)
-        expo_check.grid(row=5, sticky='W', padx=5)
+        expo_check.grid(row=4, sticky='W', padx=5)
 
         self.kf_var = tk.IntVar()
         self.kf_var.set(0)
 
         kf_check = ttk.Checkbutton(self.option_area, text='Keyframes', variable=self.kf_var, command=self.keyframe_window)
-        kf_check.grid(row=6, sticky='W', padx=5)
+        kf_check.grid(row=5, sticky='W', padx=5)
 
     def keyframe_window(self, image_idx=0, create=True):
 
         if (self.kf_var.get()) and create:
-
+            
+            
             self.kf_images=[]
             try:
                 cap = cv2.VideoCapture(self.expert_area.filename)
@@ -206,8 +207,18 @@ class App():
                 return
 
             self.keyframe_top = ttk.Toplevel()
-            self.keyframe_top.title('Choose Keyframe')
-            
+            self.keyframe_top.title('Select Keyframe')
+            print(len(self.kf_images))
+
+        def select_kf(image_idx):
+            self.kf_list.append(image_idx)
+            button_select['state'] = tk.DISABLED
+            button_deselect['state'] = tk.NORMAL
+
+        def deselect_kf(image_idx):
+            self.kf_list.remove(image_idx)
+            button_deselect['state'] = tk.DISABLED
+            button_select['state'] = tk.NORMAL
 
         print(image_idx)
         label = ttk.Label(self.keyframe_top, image=self.kf_images[image_idx])
@@ -218,10 +229,40 @@ class App():
         button_frame = ttk.Frame(self.keyframe_top)
         button_frame.grid(row=1,column=0)
 
-        button_forward = ttk.Button(button_frame, text="forward",command=lambda: self.keyframe_window(image_idx+1,False))
-        button_forward.grid(row=0,column=1,padx=10,pady=5)
-        button_back = ttk.Button(button_frame, text="Back",command=lambda: self.keyframe_window(image_idx-1,False))
-        button_back.grid(row=0,column=0,padx=10,pady=5)
+        button_skip_backward = ttk.Button(button_frame, text="<<",command=lambda: self.keyframe_window(image_idx-30,False))
+        button_skip_backward.grid(row=0,column=0,padx=10,pady=5)
+        button_back = ttk.Button(button_frame, text="<",command=lambda: self.keyframe_window(image_idx-1,False))
+        button_back.grid(row=0,column=1,padx=10,pady=5)
+
+        button_forward = ttk.Button(button_frame, text=">",command=lambda: self.keyframe_window(image_idx+1,False))
+        button_forward.grid(row=0,column=2,padx=10,pady=5)
+        button_skip_forward = ttk.Button(button_frame, text=">>",command=lambda: self.keyframe_window(image_idx+30,False))
+        button_skip_forward.grid(row=0,column=3,padx=10,pady=5)
+
+        button_select = ttk.Button(button_frame, text="Select",command=lambda: select_kf(image_idx))
+        button_select.grid(row=0,column=4,padx=20,pady=5)
+        button_deselect = ttk.Button(button_frame, text="Deselect",command=lambda: deselect_kf(image_idx), state=tk.DISABLED)
+        button_deselect.grid(row=0,column=5,padx=20,pady=5)
+
+        if image_idx == len(self.kf_images)-1:
+            button_forward['state'] = tk.DISABLED
+            button_skip_forward['state'] = tk.DISABLED
+        
+        if image_idx > len(self.kf_images)-31:
+            button_skip_forward['state'] = tk.DISABLED
+
+        if image_idx == 0:
+            button_back['state'] = tk.DISABLED
+            button_skip_backward['state'] = tk.DISABLED
+
+        if image_idx < 30:
+            button_skip_backward['state'] = tk.DISABLED
+
+        if image_idx in self.kf_list:
+            button_select['state'] = tk.DISABLED
+            button_deselect['state'] = tk.NORMAL
+
+        print('kf: ',self.kf_list)
 
     def input_weight(self):
     
@@ -343,6 +384,9 @@ class App():
 
 
     def upload_vid_expert(self):
+
+        self.kf_list = []
+
         self.end_thread()
         self.expert_area.filename = tk.filedialog.askopenfilename(title="Please Select a Video", filetypes=(("mp4 file","*.mp4"),("all files", "*.*")))
         self.video_dir_expert.config(text=self.expert_area.filename)
