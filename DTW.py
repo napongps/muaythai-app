@@ -2,6 +2,7 @@ import numpy as np
 from angle import angle_difference, angle_similarity
 from cosine import cosine_difference, cosine_similarity
 from MAW import *
+from keyframes import *
 
 def dm(extracted_ladk_vid1: np.array, extracted_ladk_vid2: np.array, sim_diff_function,
        weight, MAW, norm_value: int, windows: int, expo=False):
@@ -126,7 +127,7 @@ def unique_path(path):
     return np.array(new_path)
 
 def dtw(extracted_ladk_vid1: np.array, extracted_ladk_vid2: np.array, sim_diff_function,
-        weight, MAW, norm_value=180, windows=50, thresh=False, expo=False):
+        weight, MAW, norm_value=180, windows=50, expo=False):
 
     dist_lndmk_mat, dist_mat = dm(extracted_ladk_vid1=extracted_ladk_vid1,
                                   extracted_ladk_vid2=extracted_ladk_vid2,
@@ -144,24 +145,56 @@ def dtw(extracted_ladk_vid1: np.array, extracted_ladk_vid2: np.array, sim_diff_f
     col = np.array(path)[:, 1]
     dist_mat_path = dist_mat[row, col]
 
-    unique_row = unique_path(path)[:, 0]
-    unique_col = unique_path(path)[:, 1]
-    dist_mat_unique = dist_mat[unique_row, unique_col]
-
-    frames_count = dist_mat_unique.shape[0]
-
-    if 'difference' in sim_diff_function.__name__:
-        dist_mat_path = 1-dist_mat_path
-        dist_mat_unique = 1-dist_mat_unique
-
     cost = np.sum(dist_mat_path)/len(path)
-    std_all = np.std(dist_mat_path, dtype=np.float32)
-    std_unique = np.std(dist_mat_unique, dtype=np.float32)
-    mean = np.mean(dist_mat_path, dtype=np.float32)
-
-    if thresh:
-        thresh = np.mean(dist_mat_path)-0.03
-        cost = np.sum(dist_mat_path[dist_mat_path > thresh])/len(path)
 
     return path, dist_mat, dist_lndmk_mat, cost_mat, cost
 
+def dtw_keyframe(extracted_ladk_vid1: np.array, extracted_ladk_vid2: np.array, keyframes_list: list, 
+                sim_diff_function, weight, MAW, norm_value=180, windows=50, expo=False):
+
+    if keyframes_list == []:
+        return dtw(extracted_ladk_vid1=extracted_ladk_vid1,
+                   extracted_ladk_vid2=extracted_ladk_vid2,
+                   sim_diff_function=sim_diff_function,
+                   weight=weight,
+                   MAW=MAW,
+                   norm_value=norm_value,
+                   windows=windows,
+                   expo=expo)
+
+    dist_lndmk_mat, dist_mat = dm(extracted_ladk_vid1=extracted_ladk_vid1,
+                                  extracted_ladk_vid2=extracted_ladk_vid2,
+                                  sim_diff_function=sim_diff_function,
+                                  weight=weight,
+                                  MAW=MAW,
+                                  norm_value=norm_value,
+                                  windows=windows,
+                                  expo=expo)
+
+    keyframes_list, student_kf = match_kf(keyframes_list, dist_mat)
+
+    all_row = np.array([], dtype=np.uint16).reshape(0, 1)
+    all_col = np.array([], dtype=np.uint16).reshape(0, 1)
+    print(keyframes_list)
+    print(student_kf)
+
+    for ks, ke, stks, stke in list(zip(keyframes_list, keyframes_list[1:], student_kf, student_kf[1:])):
+
+        print('ks:',ks, 'ke:',ke, 'stks:',stks, 'stke:',stke)
+        print('dist_mat shape:', dist_mat[ks:ke+1,stks:stke+1].shape)
+        path, cost_mat, vert_hor = dp(
+            dist_mat[ks:ke+1, stks:stke+1], sim_diff_function.__name__)
+
+        row = (np.asarray(path)+ks)[:, 0].reshape(-1, 1)
+        col = (np.asarray(path)+stks)[:, 1].reshape(-1, 1)
+
+        all_row = np.vstack((all_row, row))
+        all_col = np.vstack((all_col, col))
+
+    all_path = np.unique(np.hstack((all_row, all_col)), axis=0)
+
+    dist_mat_path = dist_mat[all_path[:, 0], all_path[:, 1]]
+
+    cost = np.mean(dist_mat_path)
+
+    return all_path, dist_mat, dist_lndmk_mat, cost_mat, cost

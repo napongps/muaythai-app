@@ -15,7 +15,7 @@ import ttkbootstrap as ttk
 from detect_landmark import landmark_detection
 from angle import *
 from cosine import *
-from DTW import dtw
+from DTW import dtw_keyframe
 from result import *
 
 class App():
@@ -162,12 +162,6 @@ class App():
         self.MAW_check = ttk.Checkbutton(self.option_area, text='Moving Weight', variable=self.MAW_var, command=self.MAW_window)
         self.MAW_check.grid(row=3, sticky='W', padx=5)
 
-        # self.thresh_var = tk.IntVar()
-        # self.thresh_var.set(0)
-
-        # thresh_check = ttk.Checkbutton(self.option_area, text='Threshold', variable=self.thresh_var)
-        # thresh_check.grid(row=4, sticky='W', padx=5)
-
         self.expo_var = tk.IntVar()
         self.expo_var.set(0)
 
@@ -262,7 +256,7 @@ class App():
             button_select['state'] = tk.DISABLED
             button_deselect['state'] = tk.NORMAL
 
-        print('kf: ',self.kf_list)
+        print('kf: ',sorted(self.kf_list))
 
     def input_weight(self):
     
@@ -454,11 +448,13 @@ class App():
             limb_expert = limb_expert_exe.result()
             limb_student = limb_student_exe.result()
             exe.shutdown(wait=True)
-            self.path, self.dist_mat, self.dist_lndmk_mat, self.cost_mat, self.cost = dtw(limb_expert,limb_student,cosine_similarity,
-                                                                                            weight=weight_arr, MAW=self.MAW_var.get(), 
-                                                                                            norm_value=int(self.norm.get()), 
-                                                                                            windows=self.window_output, thresh=self.thresh_var.get(),
-                                                                                            expo=self.expo_var.get())
+            self.path, self.dist_mat, self.dist_lndmk_mat, self.cost_mat, self.cost = dtw_keyframe(limb_expert,limb_student,
+                                                                                                    keyframes_list=sorted(self.kf_list),
+                                                                                                    sim_diff_function=cosine_similarity,
+                                                                                                    weight=weight_arr, MAW=self.MAW_var.get(), 
+                                                                                                    norm_value=int(self.norm.get()), 
+                                                                                                    windows=self.window_output,
+                                                                                                    expo=self.expo_var.get())
 
 
         else:
@@ -467,12 +463,14 @@ class App():
             angle_expert = angle_expert_exe.result()
             angle_student = angle_student_exe.result()
             exe.shutdown(wait=True)
-            self.path, self.dist_mat, self.dist_lndmk_mat, self.cost_mat, self.cost = dtw(angle_expert,angle_student,angle_similarity,
-                                                                                            weight=weight_arr, MAW=self.MAW_var.get(), 
-                                                                                            norm_value=int(self.norm.get()), 
-                                                                                            windows=self.window_output, thresh=self.thresh_var.get(),
-                                                                                            expo=self.expo_var.get())
-        
+            self.path, self.dist_mat, self.dist_lndmk_mat, self.cost_mat, self.cost = dtw_keyframe(angle_expert,angle_student,
+                                                                                                    keyframes_list=sorted(self.kf_list),
+                                                                                                    sim_diff_function=angle_similarity,
+                                                                                                    weight=weight_arr, MAW=self.MAW_var.get(), 
+                                                                                                    norm_value=int(self.norm.get()), 
+                                                                                                    windows=self.window_output,
+                                                                                                    expo=self.expo_var.get())
+                
         self.merge_img = display_error(self.path, self.dist_mat, self.dist_lndmk_mat, 
                                                 all_frame_expert, all_frame_student, 
                                                 cam_ladk_expert, cam_ladk_student,
